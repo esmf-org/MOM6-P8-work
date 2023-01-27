@@ -462,9 +462,17 @@ subroutine InitializeAdvertise(gcomp, importState, exportState, clock, rc)
   CALL ESMF_TimeIntervalGet(TINT, S=DT_OCEAN, RC=rc)
   if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
+call ESMF_TraceRegionEnter("fms_init", rc=rc)
   call fms_init(mpi_comm_mom)
+call ESMF_TraceRegionExit("fms_init", rc=rc)
+call ESMF_TraceRegionEnter("constants_init", rc=rc)
   call constants_init
+call ESMF_TraceRegionExit("constants_init", rc=rc)
+call ESMF_TraceRegionEnter("field_manager_init", rc=rc)
   call field_manager_init
+call ESMF_TraceRegionExit("field_manager_init", rc=rc)
+
+call ESMF_TraceRegionEnter("Remainder", rc=rc)
 
   ! determine the calendar
   if (cesm_coupled) then
@@ -783,6 +791,7 @@ subroutine InitializeAdvertise(gcomp, importState, exportState, clock, rc)
     call NUOPC_Advertise(exportState, standardName=fldsFrOcn(n)%stdname, name=fldsFrOcn(n)%shortname, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
   enddo
+call ESMF_TraceRegionExit("Remainder", rc=rc)
 
 end subroutine InitializeAdvertise
 
