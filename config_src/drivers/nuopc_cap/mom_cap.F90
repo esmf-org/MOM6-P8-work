@@ -81,6 +81,8 @@ use ESMF,  only: ESMF_AlarmGet, ESMF_AlarmIsCreated, ESMF_ALARMLIST_ALL, ESMF_Al
 use ESMF,  only: ESMF_STATEITEM_NOTFOUND, ESMF_FieldWrite
 use ESMF,  only: ESMF_END_ABORT, ESMF_Finalize
 use ESMF,  only: operator(==), operator(/=), operator(+), operator(-)
+use ESMF,  only: ESMF_TraceRegionEnter, ESMF_TraceRegionExit
+
 
 ! TODO ESMF_GridCompGetInternalState does not have an explicit Fortran interface.
 !! Model does not compile with "use ESMF,  only: ESMF_GridCompGetInternalState"
@@ -472,7 +474,7 @@ call ESMF_TraceRegionEnter("field_manager_init", rc=rc)
   call field_manager_init
 call ESMF_TraceRegionExit("field_manager_init", rc=rc)
 
-call ESMF_TraceRegionEnter("Remainder", rc=rc)
+call ESMF_TraceRegionEnter("Calendar", rc=rc)
 
   ! determine the calendar
   if (cesm_coupled) then
@@ -498,8 +500,13 @@ call ESMF_TraceRegionEnter("Remainder", rc=rc)
   else
     call set_calendar_type (JULIAN)
   endif
+call ESMF_TraceRegionExit("Calendar", rc=rc)
 
+call ESMF_TraceRegionEnter("diag_manager_init", rc=rc)
   call diag_manager_init
+call ESMF_TraceRegionExit("diag_manager_init", rc=rc)
+
+call ESMF_TraceRegionEnter("remainder.1", rc=rc)
 
   ! this ocean connector will be driven at set interval
   DT = set_time (DT_OCEAN, 0)
@@ -522,6 +529,8 @@ call ESMF_TraceRegionEnter("Remainder", rc=rc)
   if (is_root_pe()) then
     write(logunit,*) subname//'start time: y,m,d-',year,month,day,'h,m,s=',hour,minute,second
   endif
+call ESMF_TraceRegionExit("remainder.1", rc=rc)
+call ESMF_TraceRegionEnter("remainder.2", rc=rc)
 
   ! rsd need to figure out how to get this without share code
   !call shr_nuopc_get_component_instance(gcomp, inst_suffix, inst_index)
@@ -547,6 +556,9 @@ call ESMF_TraceRegionEnter("Remainder", rc=rc)
   else
     logunit = output_unit
   endif
+call ESMF_TraceRegionExit("remainder.2", rc=rc)
+call ESMF_TraceRegionEnter("remainder.3", rc=rc)
+
 
   starttype = ""
   call NUOPC_CompAttributeGet(gcomp, name='start_type', value=cvalue, &
@@ -576,6 +588,9 @@ call ESMF_TraceRegionEnter("Remainder", rc=rc)
   if (len_trim(runtype) > 0) then
     call ESMF_LogWrite('MOM_cap:startup = '//trim(runtype), ESMF_LOGMSG_INFO)
   endif
+call ESMF_TraceRegionExit("remainder.3", rc=rc)
+call ESMF_TraceRegionEnter("remainder.4", rc=rc)
+
 
   restartfile = ""; restartfiles = ""
   if (runtype == "initial") then
@@ -631,16 +646,27 @@ call ESMF_TraceRegionEnter("Remainder", rc=rc)
     endif
 
   endif
+call ESMF_TraceRegionExit("remainder.4", rc=rc)
+call ESMF_TraceRegionEnter("ocean_model_init", rc=rc)
+
 
   ocean_public%is_ocean_pe = .true.
   call ocean_model_init(ocean_public, ocean_state, time0, time_start, input_restart_file=trim(restartfiles))
+call ESMF_TraceRegionExit("ocean_model_init", rc=rc)
+call ESMF_TraceRegionEnter("ocean_model_flux_init", rc=rc)
 
   ! GMM, this call is not needed in CESM. Check with EMC if it can be deleted.
   call ocean_model_flux_init(ocean_state)
+call ESMF_TraceRegionExit("ocean_model_flux_init", rc=rc)
+call ESMF_TraceRegionEnter("ocean_model_init_sfc", rc=rc)
 
   call ocean_model_init_sfc(ocean_state, ocean_public)
+call ESMF_TraceRegionExit("ocean_model_init_sfc", rc=rc)
+call ESMF_TraceRegionEnter("mpp_get_compute_domain", rc=rc)
 
   call mpp_get_compute_domain(ocean_public%domain, isc, iec, jsc, jec)
+call ESMF_TraceRegionExit("mpp_get_compute_domain", rc=rc)
+call ESMF_TraceRegionEnter("remainder.5", rc=rc)
 
   allocate ( Ice_ocean_boundary% u_flux (isc:iec,jsc:jec),          &
              Ice_ocean_boundary% v_flux (isc:iec,jsc:jec),          &
@@ -699,6 +725,8 @@ call ESMF_TraceRegionEnter("Remainder", rc=rc)
     Ice_ocean_boundary%hevap           = 0.0
     Ice_ocean_boundary%hcond           = 0.0
   endif
+call ESMF_TraceRegionExit("remainder.5", rc=rc)
+call ESMF_TraceRegionEnter("remainder.6", rc=rc)
 
   call query_ocean_state(ocean_state, use_waves=use_waves, wave_method=wave_method)
   if (use_waves) then
@@ -791,7 +819,7 @@ call ESMF_TraceRegionEnter("Remainder", rc=rc)
     call NUOPC_Advertise(exportState, standardName=fldsFrOcn(n)%stdname, name=fldsFrOcn(n)%shortname, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
   enddo
-call ESMF_TraceRegionExit("Remainder", rc=rc)
+call ESMF_TraceRegionExit("remainder.6", rc=rc)
 
 end subroutine InitializeAdvertise
 
